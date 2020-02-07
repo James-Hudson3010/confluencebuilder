@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     :copyright: Copyright 2016-2020 by the contributors (see AUTHORS file).
+    :copyright: Copyright 2007-2019 by the Sphinx team, see AUTHORS.
     :license: BSD-2-Clause, see LICENSE for details.
 """
 
@@ -17,6 +18,8 @@ from .util import first
 from .writer import ConfluenceWriter
 from docutils import nodes
 from docutils.io import StringOutput
+from docutils.nodes import Node
+from sphinx.locale import __
 from getpass import getpass
 from os import path
 from sphinx import addnodes
@@ -26,15 +29,10 @@ from sphinx.errors import ExtensionError
 from sphinx.locale import _
 from sphinx.util import status_iterator
 from sphinx.util.osutil import ensuredir, SEP
-import io
-import sys
-
-from docutils.nodes import Node
-
 from sphinx.util.nodes import inline_all_toctrees
 from sphinx.util.console import darkgreen
-from sphinx.util import progress_message
-from sphinx.locale import __
+import io
+import sys
 
 # load imgmath extension if available to handle math node pre-processing
 try:
@@ -472,7 +470,7 @@ class ConfluenceBuilder(Builder):
 
             for id, secnum in secnums.items():
 
-                alias = "%s/%s" % (docname, id)
+                alias = '{}/{}'.format(docname, id)
                 new_secnumbers[alias] = secnum
 
         return {self.config.master_doc: new_secnumbers}
@@ -499,7 +497,7 @@ class ConfluenceBuilder(Builder):
 
             for figtype, fignums in fignumlist.items():
 
-                alias = "%s/%s" % (docname, figtype)
+                alias = '{}/{}'.format(docname, figtype)
 
                 new_fignumbers.setdefault(alias, {})
 
@@ -514,20 +512,24 @@ class ConfluenceBuilder(Builder):
 
             docnames = self.env.all_docs
 
-            with progress_message(__('preparing documents for single confluence document')):
-                self.prepare_writing(docnames)  # type: ignore
+            ConfluenceLogger.info(__('preparing documents for single confluence document'), nonl=0)
+            self.prepare_writing(docnames)
+            ConfluenceLogger.info(__('done'))
 
-            with progress_message(__('assembling single confluence document')):
-                doctree = self.assemble_doctree()
-                self.env.toc_secnumbers = self.assemble_toc_secnumbers()
-                self.env.toc_fignumbers = self.assemble_toc_fignumbers()
+            ConfluenceLogger.info(__('assembling single confluence document'), nonl=0)
+            doctree = self.assemble_doctree()
+            self.env.toc_secnumbers = self.assemble_toc_secnumbers()
+            self.env.toc_fignumbers = self.assemble_toc_fignumbers()
+            ConfluenceLogger.info(__('done'))
 
-            with progress_message(__('writing single confluence document')):
-                self.write_doc(self.config.master_doc, doctree)
+            ConfluenceLogger.info(__('writing single confluence document'), nonl=0)
+            self.write_doc_serialized(self.config.master_doc, doctree)
+            self.write_doc(self.config.master_doc, doctree)
+            ConfluenceLogger.info(__('done'))
 
         else:
 
-            super().write(build_docnames, updated_docnames, method)
+            super(ConfluenceBuilder, self).write(build_docnames, updated_docnames, method)
 
     def publish_doc(self, docname, output):
         conf = self.config
